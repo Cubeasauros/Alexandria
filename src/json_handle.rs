@@ -4,6 +4,9 @@
 #[macro_use] use serde;
 use rocket::State;
 use rocket_contrib::json::{Json, JsonValue};
+use super::CodexDb;
+
+use super::sq_lite_test;
 
 
 
@@ -20,7 +23,7 @@ pub struct Message {
 
 // TODO: This example can be improved by using `route` with multiple HTTP verbs.
 #[post("/<id>", format = "json", data = "<message>")]
-pub fn new(id: usize, message: Json<Message>) -> JsonValue {
+pub fn new(conn:CodexDb,id: usize, message: Json<Message>) -> JsonValue {
 
     if id==1 {
         json!({
@@ -31,6 +34,9 @@ pub fn new(id: usize, message: Json<Message>) -> JsonValue {
         json!({ "status": "ok" })
     }
 }
+
+
+
 
 
 

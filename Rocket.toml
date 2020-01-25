@@ -1,0 +1,2 @@
+[global.databases.codex]
+url = "mysql://root:root@localhost/codex"

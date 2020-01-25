@@ -6,3 +6,6 @@
 pub mod json_handle;
 pub mod database_handle;
 pub mod sq_lite_test;
+use rocket_contrib::databases::mysql;
+#[database("codex")]
+pub struct CodexDb(mysql::Conn);
