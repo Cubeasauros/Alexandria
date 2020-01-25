@@ -3,20 +3,30 @@
 #[macro_use] extern crate rocket;
 #[macro_use] extern crate rocket_contrib;
 #[macro_use] extern crate serde;
+extern crate rusqlite;
 
 #[cfg(test)] mod tests;
 
+use Alexandria::json_handle;
 use std::sync::Mutex;
 use std::collections::HashMap;
 
 use rocket::State;
 use rocket_contrib::json::{Json, JsonValue};
 
+
 // The type to represent the ID of a message.
 type ID = usize;
 
+
+
+
 // We're going to store all of the messages here. No need for a DB.
 type MessageMap = Mutex<HashMap<ID, String>>;
+
+
+
+
 
 #[derive(Serialize, Deserialize)]
 struct Message {
@@ -24,13 +34,16 @@ struct Message {
     contents: String
 }
 
+
+
+
 // TODO: This example can be improved by using `route` with multiple HTTP verbs.
 #[post("/<id>", format = "json", data = "<message>")]
 fn new(id: ID, message: Json<Message>, map: State<MessageMap>) -> JsonValue {
     let mut hashmap = map.lock().expect("map lock.");
-    if hashmap.contains_key(&id) {
+    if id==1{
         json!({
-            "status": "error",
+            "status": "Ok",
             "reason": "ID exists. Try put."
         })
     } else {
@@ -39,6 +52,11 @@ fn new(id: ID, message: Json<Message>, map: State<MessageMap>) -> JsonValue {
     }
 }
 
+
+
+
+
+
 #[put("/<id>", format = "json", data = "<message>")]
 fn update(id: ID, message: Json<Message>, map: State<MessageMap>) -> Option<JsonValue> {
     let mut hashmap = map.lock().unwrap();
@@ -46,7 +64,7 @@ fn update(id: ID, message: Json<Message>, map: State<MessageMap>) -> Option<Json
         hashmap.insert(id, message.0.contents);
         Some(json!({ "status": "ok" }))
     } else {
-        None
+        Some(json!({ "status": "error" }))
     }
 }
 
@@ -71,11 +89,13 @@ fn not_found() -> JsonValue {
 
 fn rocket() -> rocket::Rocket {
     rocket::ignite()
-        .mount("/message", routes![new, update, get])
+        .mount("/message", routes![json_handle::new])
         .register(catchers![not_found])
         .manage(Mutex::new(HashMap::<ID, String>::new()))
 }
 
 fn main() {
+    //let pool=mysql::Pool::new("mysql://root:password@localhost:3307/mysql").unwrap();
+    //println!("{:?}",pool );
     rocket().launch();
 }
