@@ -23,8 +23,8 @@ pub struct Message {
 
 // TODO: This example can be improved by using `route` with multiple HTTP verbs.
 #[post("/<id>", format = "json", data = "<message>")]
-pub fn new(conn:CodexDb,id: usize, message: Json<Message>) -> JsonValue {
-
+pub fn new(mut conn : CodexDb,id: usize, message: Json<Message>) -> JsonValue {
+    conn.query(r"CREATE  TABLE ment(id int, amount int ,name text)").unwrap();
     if id==1 {
         json!({
             "status": "ok",
