@@ -1,4 +1,5 @@
+
+[global]
+workers=1
 [global.databases.codex]
-
-
 url="mysql://Wp57fdHwDC:PukZXoE6gy@remotemysql.com/Wp57fdHwDC"
