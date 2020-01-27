@@ -2,4 +2,4 @@
 [global]
 workers=1
 [global.databases.codex]
-url="mysql://Wp57fdHwDC:PukZXoE6gy@remotemysql.com/Wp57fdHwDC"
+url="mysql://1LNtWJZSlA:SAWkpVSm9x@remotemysql.com/1LNtWJZSlA"
