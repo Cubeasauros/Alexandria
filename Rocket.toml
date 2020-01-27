@@ -1,5 +1,5 @@
 
 [global]
-workers=1
+workers=2
 [global.databases.codex]
-url="mysql://1LNtWJZSlA:SAWkpVSm9x@remotemysql.com/1LNtWJZSlA"
+url="mysql://codexman:codexman@db4free.net/codexman"
