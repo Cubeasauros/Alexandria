@@ -1,0 +1,6 @@
+r"CREATE  TABLE books(image text,title text,isbn_no text,description text,reg_no text,book_no text,status bool)"
+r"CREATE  TABLE user(name text,
+    reg_no text,
+    email text,
+    ph_no text,
+    password text)"

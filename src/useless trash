@@ -48,3 +48,50 @@ fn not_found() -> JsonValue {
         "reason": "Resource was not found."
     })
 }
+
+
+{
+  "id": 1,
+  "contents": "String"
+}
+
+
+  {
+   			"name":"String",
+        "reg_no":"String",
+        "email":"String",
+        "ph_no":"String",
+        "password":"String"
+
+}
+
+
+
+  {
+   			"name":"agjhg",
+        "reg_no":"B180830EE",
+        "email":"niddh@yandex.com",
+        "ph_no":"253728349",
+        "password":"password"
+
+}
+
+
+url = "mysql://root:1234@192.168.137.1/codex"
+
+
+DeleteBook{
+    "book_no":"String",
+    "userAuth":"String"
+}
+
+
+newbook {
+    "image":"String",
+    "title":"String",
+    "isbn_no":"String",
+    "description":"String",
+    "reg_no":"String" ,
+    "book_no":"String",
+    "price":"String"
+}

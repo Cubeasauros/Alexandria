@@ -32,7 +32,14 @@ fn not_found() -> JsonValue {
 
 fn rocket() -> rocket::Rocket {
     rocket::ignite()
-        .mount("/message", routes![json_handle::new,json_handle::register,json_handle::login, json_handle::list_all_books])
+        .mount("/message", routes![
+        json_handle::new,
+        json_handle::register,
+        json_handle::login,
+        json_handle::list_all_books,
+        json_handle::new_book,
+        json_handle::delete_book,
+        json_handle::login])
         .attach(CodexDb::fairing())
         .register(catchers![not_found])
 }

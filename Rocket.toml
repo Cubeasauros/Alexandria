@@ -1,2 +1,3 @@
 [global.databases.codex]
-url = "mysql://root:1234@192.168.137.1/codex"
+
+url="mysql://1LNtWJZSlA:QhYIyICLUX@remotemysql.com/1LNtWJZSlA"

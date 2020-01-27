@@ -5,7 +5,10 @@
 use rocket::State;
 use rocket_contrib::json::{Json, JsonValue};
 use super::CodexDb;
-
+use mysql::params;
+use mysql;
+use std::io;
+use std::io::Write;
 use super::sq_lite_test;
 
 
@@ -13,7 +16,6 @@ use super::sq_lite_test;
 #[derive(Serialize, Deserialize)]
 pub struct Message {
     id: Option<usize>,
-    contents: String
 }
 
 
@@ -24,11 +26,15 @@ pub struct Message {
 // TODO: This example can be improved by using `route` with multiple HTTP verbs.
 #[post("/<id>", format = "json", data = "<message>")]
 pub fn new(mut conn : CodexDb,id: usize, message: Json<Message>) -> JsonValue {
-    conn.query(r"CREATE  TABLE ment(id int, amount int ,name text)").unwrap();
+    conn.query(r"CREATE  TABLE user(name text,
+        reg_no text,
+        email text,
+        ph_no text,
+        password text)").unwrap();
     if id==1 {
         json!({
             "status": "ok",
-            "reason": "ID exists. tartereTry put."
+            "message": "Table created"
         })
     } else {
         json!({ "status": "ok" })
@@ -52,17 +58,19 @@ pub struct NewUser {
 //Creates new user
 //check errors
 #[post("/register", format = "json", data = "<message>")]
-pub fn register( message: Json<NewUser>) -> JsonValue {
+pub fn register( mut conn:CodexDb,message: Json<NewUser>) -> JsonValue {
 
-    //database handler and checks here
-    if true {
+    let result=conn.prep_exec(r#"INSERT INTO user(name,reg_no,email,ph_no ,password ) VALUES(:name,:reg_no,:email,:ph_no,:password);"#,
+    params!{"name"=>message.0.name,"reg_no"=>message.0.reg_no,"email"=>message.0.email,"ph_no"=>message.0.ph_no,"password"=>message.0.password}).unwrap();
+    //println!("{:?}",out );
+
+
+
         json!({
-            "status": message.0.name,
+            "status": "ok",
             "message": "user created"
         })
-    } else {
-        json!({ "status": "error" })
-    }
+
 }
 
 
@@ -80,17 +88,55 @@ pub struct Login{
 //login
 //create after login things
 #[post("/login", format = "json", data = "<message>")]
-pub fn login( message: Json<Login>) -> JsonValue {
+pub fn login( mut conn:CodexDb,message: Json<Login>) -> JsonValue {
+        let mut out:Vec<String>=Vec::new();
+        out=conn.prep_exec(r"SELECT password FROM users WHERE reg_no=:reg_no;",
+        params!{"reg_no"=>&message.0.reg_no}).map(|result|{
+        result.map(|x| x.unwrap()).map(|row| {
+                    let (password) = mysql::from_row(row);
+                    password
+                }).collect()
+            }).unwrap();
+        //generate authtoken here
 
-    if true {
+        if out[0]==message.0.password{
+            json!({
+                "status": message.0.reg_no,
+                "message": "user logged in "
+            })
+        }else{
+            json!({
+                "status": message.0.reg_no,
+                "message": "user not logged in"
+            })
+        }
+    }
+
+
+
+
+
+#[derive(Serialize,Deserialize)]
+pub struct Profile{
+    reg_no:String,
+}
+//returns profile
+#[post("/profile", format = "json", data = "<message>")]
+pub fn profile( message: Json<Profile>) -> JsonValue {
+
+
+
+
         json!({
             "status": message.0.reg_no,
             "message": "user logged in "
         })
-    } else {
-        json!({ "status": "error" })
-    }
 }
+
+
+
+
+
 
 
 
@@ -123,29 +169,28 @@ pub struct Books{
 
 //list all books
 #[post("/list_all_books", format = "json", data="<message>")]
-pub fn list_all_books(message:Json<Disp>) -> JsonValue {
+pub fn list_all_books(mut conn:CodexDb,message:Json<Disp>) -> JsonValue {
 
-    let book=Books{
-        books:vec![Book{
-        isbn_no:"hey".to_string(),
-        image:"het".to_string(),
-        name:"hsadgjh".to_string()
-    },
-    Book{
-    isbn_no:"whey".to_string(),
-    image:"hessdt".to_string(),
-    name:"hsadgjasah".to_string()
-}]
-};
-    if true {
+        let mut booklist=Books{books:Vec::new()};
+
+        booklist.books=conn.prep_exec(r"SELECT isbn_no,image,title FROM books;",
+        ()).map(|result|{
+            result.map(|x| x.unwrap()).map(|row| {
+            // ⚠️ Note that from_row will panic if you don't follow your schema
+            let (isbn_no,image,name) = mysql::from_row(row);
+            Book{
+                isbn_no:isbn_no,
+                image:image,
+                name:name,
+            }
+        }).collect() // Collect payments so now `QueryResult` is mapped to `Vec<Payment>`
+    }).unwrap(); // Unwrap `Vec<Payment>`
+
         json!({
-            "books":book.books
+            "books":booklist.books
 
         })
-    } else {
-        json!({ "status": "error" })
     }
-}
 
 
 
@@ -159,32 +204,51 @@ pub fn list_all_books(message:Json<Disp>) -> JsonValue {
 #[derive(Serialize,Deserialize)]
 pub struct RequestBook{
     book_no:String,
-    buyer:String,
+    auth_token:String,
 }
 
-//login
-#[post("/request", format = "json", data = "<message>")]
-pub fn request_book( message: Json<RequestBook>) -> JsonValue {
+//buy book
+#[post("/buy", format = "json", data = "<message>")]
+pub fn request_book(mut conn:CodexDb, message: Json<RequestBook>) -> JsonValue {
+
+    conn.prep_exec(r"UPDATE books SET status=",
+    params!{"book_no"=>&message.0.book_no}).unwrap();
 
 
-    //change statuss of book here
+    //change status of book here
 
-    if true {
+
         json!({
             "status": message.0.book_no,
-            "message": "user logged in "
+            "message": "book status changed to pending "
         })
-    } else {
-        json!({ "status": "error" })
-    }
+
 }
 
 
+
+
+
+
+
+
+
+
+
+
+//delete book
+#[derive(Serialize,Deserialize)]
+pub struct DeleteBook{
+    book_no:String,
+    user_auth:String
+}
 
 //deletes  book
 #[post("/delete", format = "json", data = "<message>")]
-pub fn delete_book( message: Json<RequestBook>) -> JsonValue {
-
+pub fn delete_book( mut conn:CodexDb,message: Json<DeleteBook>) -> JsonValue {
+    //if user auth == auth for user
+        conn.prep_exec(r"DELETE FROM books WHERE book_no=:book_no;",
+        params!{"book_no"=>&message.0.book_no}).unwrap();
 
     //delete book here
     //check if owner
@@ -203,27 +267,49 @@ pub fn delete_book( message: Json<RequestBook>) -> JsonValue {
 
 
 
-//login
+
+
+
+
+//Publish new book
 #[derive(Serialize,Deserialize)]
 pub struct NewBook{
     image:String,
     title:String,
     isbn_no:String,
     description:String,
-    unique_id:String
+    reg_no:String ,
+    book_no:String,
+    price:String
 }
 
-//login
+//publish
 #[post("/new_book", format = "json", data = "<message>")]
-pub fn new_book( message: Json<NewBook>) -> JsonValue {
+pub fn new_book(mut conn:CodexDb, message: Json<NewBook>) -> JsonValue {
+
+
+    conn.prep_exec(r"INSERT INTO books(image ,title ,isbn_no ,description,reg_no,book_no,status,price) VALUES
+    (:image,:title,:isbn_no,:description,:reg_no,:book_no,:status,:price);",
+    params!{"image"=>message.0.image,
+            "title"=>message.0.title,
+            "isbn_no"=>message.0.isbn_no,
+            "description"=>message.0.description,
+            "reg_no"=>message.0.reg_no,
+            "book_no"=>&message.0.book_no,
+            "status"=>"unsold",
+            "price"=>message.0.price}).unwrap();
+            //unsold or requester
 
 
     //upload new  book here
+    //handle error case
+    //create code for generating book id
+    //get reg_no from user
 
     if true {
         json!({
-            "status": message.0.unique_id,
-            "message": "book created "
+            "status": "book created ",
+            "message": message.0.book_no
         })
     } else {
         json!({ "status": "error" })
