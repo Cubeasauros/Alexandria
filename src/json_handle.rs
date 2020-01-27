@@ -10,6 +10,23 @@ use mysql;
 use std::io;
 use std::io::Write;
 use super::sq_lite_test;
+use jsonwebtoken;
+use jsonwebtoken::{decode, encode, Header, Validation};
+use std::time::{SystemTime, UNIX_EPOCH};
+use super::jwt_handles;
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -17,11 +34,6 @@ use super::sq_lite_test;
 pub struct Message {
     id: Option<usize>,
 }
-
-
-
-
-
 
 // TODO: This example can be improved by using `route` with multiple HTTP verbs.
 #[post("/<id>", format = "json", data = "<message>")]
@@ -61,7 +73,11 @@ pub struct NewUser {
 pub fn register( mut conn:CodexDb,message: Json<NewUser>) -> JsonValue {
 
     let result=conn.prep_exec(r#"INSERT INTO user(name,reg_no,email,ph_no ,password ) VALUES(:name,:reg_no,:email,:ph_no,:password);"#,
-    params!{"name"=>message.0.name,"reg_no"=>message.0.reg_no,"email"=>message.0.email,"ph_no"=>message.0.ph_no,"password"=>message.0.password}).unwrap();
+    params!{"name"=>message.0.name,
+    "reg_no"=>message.0.reg_no,
+    "email"=>message.0.email,
+    "ph_no"=>message.0.ph_no,
+    "password"=>message.0.password}).unwrap();
     //println!("{:?}",out );
 
 
@@ -76,7 +92,11 @@ pub fn register( mut conn:CodexDb,message: Json<NewUser>) -> JsonValue {
 
 
 
-
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LoginToken {
+    pub reg_no: String,
+    pub exp: usize,
+}
 
 //login for user
 #[derive(Serialize,Deserialize)]
@@ -90,23 +110,45 @@ pub struct Login{
 #[post("/login", format = "json", data = "<message>")]
 pub fn login( mut conn:CodexDb,message: Json<Login>) -> JsonValue {
         let mut out:Vec<String>=Vec::new();
-        out=conn.prep_exec(r"SELECT password FROM users WHERE reg_no=:reg_no;",
+        out=conn.prep_exec(r"SELECT password FROM user WHERE reg_no=:reg_no;",
         params!{"reg_no"=>&message.0.reg_no}).map(|result|{
         result.map(|x| x.unwrap()).map(|row| {
                     let (password) = mysql::from_row(row);
                     password
                 }).collect()
             }).unwrap();
-        //generate authtoken here
+
+
+        //generates authtoken here
+        if out.is_empty(){
+            return(
+                json!({
+                    "status": "error",
+                    "message": "user not available in the database"
+                })
+            )
+        }
+
+
 
         if out[0]==message.0.password{
-            json!({
-                "status": message.0.reg_no,
-                "message": "user logged in "
-            })
-        }else{
-            json!({
-                "status": message.0.reg_no,
+
+            let claims = LoginToken {
+              reg_no: message.0.reg_no,
+              exp: SystemTime::now()
+                  .duration_since(UNIX_EPOCH)
+                  .unwrap()
+                  .as_secs() as usize
+                  + 3600,
+          };
+
+          let token=Some(encode(&Header::default(), &claims, "secret".as_ref()).unwrap());
+          json!({
+                "status": "ok",
+                "message": token})
+            }else{
+        json!({
+                "status": "Wrong credentials",
                 "message": "user not logged in"
             })
         }
@@ -114,23 +156,56 @@ pub fn login( mut conn:CodexDb,message: Json<Login>) -> JsonValue {
 
 
 
-
+#[derive(Serialize,Deserialize)]
+pub struct ProfileReturn{
+        name:String,
+        email:String,
+        reg_no:String,
+        room_no:String,
+}
 
 #[derive(Serialize,Deserialize)]
 pub struct Profile{
-    reg_no:String,
+    jwt_token:String,
 }
 //returns profile
 #[post("/profile", format = "json", data = "<message>")]
-pub fn profile( message: Json<Profile>) -> JsonValue {
+pub fn profile(mut conn:CodexDb, message: Json<Profile>) -> JsonValue {
+    let out=jwt_handles::jwt_decoder(message.0.jwt_token);
 
+    match out{
+        Some(value)=>{
 
+            let mut output:Vec<ProfileReturn>=Vec::new();
+            output=conn.prep_exec(r"SELECT name,email,reg_no,room_no FROM user WHERE reg_no=:reg_no;",
+            params!{"reg_no"=>&value.reg_no}).map(|result|{
+            result.map(|x| x.unwrap()).map(|row| {
+                        let (name,email,reg_no,room_no) = mysql::from_row(row);
+                        ProfileReturn{
+                            name:name,
+                            email:email,
+                            reg_no:reg_no,
+                            room_no:room_no
+                        }
 
+                    }).collect()
+                }).unwrap();
 
-        json!({
-            "status": message.0.reg_no,
-            "message": "user logged in "
-        })
+            //bug possibiity
+
+            json!({
+                "status": "ok",
+                "message": &output[0]
+            })
+        }
+        None=>{
+            json!({
+                "status": "failed",
+                "message": "Invalid jwt token"
+            })
+        }
+    }
+
 }
 
 
@@ -156,10 +231,6 @@ pub struct Book{
 pub struct Disp{
     name:String,
 }
-
-
-
-
 
 //list all books
 #[derive(Serialize,Deserialize)]
@@ -211,7 +282,7 @@ pub struct RequestBook{
 #[post("/buy", format = "json", data = "<message>")]
 pub fn request_book(mut conn:CodexDb, message: Json<RequestBook>) -> JsonValue {
 
-    conn.prep_exec(r"UPDATE books SET status=",
+    conn.prep_exec(r#"UPDATE books SET status="sold" WHERE book_no=:book_no"#,
     params!{"book_no"=>&message.0.book_no}).unwrap();
 
 

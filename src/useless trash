@@ -95,3 +95,9 @@ newbook {
     "book_no":"String",
     "price":"String"
 }
+
+
+Login{
+    reg_no:String,
+    password:String,
+}

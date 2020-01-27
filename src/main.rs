@@ -3,7 +3,6 @@
 #[macro_use] extern crate rocket;
 #[macro_use] extern crate rocket_contrib;
 #[macro_use] extern crate serde;
-extern crate rusqlite;
 extern crate base64;
 use Alexandria::json_handle;
 use Alexandria::CodexDb;
@@ -35,11 +34,11 @@ fn rocket() -> rocket::Rocket {
         .mount("/message", routes![
         json_handle::new,
         json_handle::register,
-        json_handle::login,
         json_handle::list_all_books,
         json_handle::new_book,
         json_handle::delete_book,
-        json_handle::login])
+        json_handle::login,
+        json_handle::profile])
         .attach(CodexDb::fairing())
         .register(catchers![not_found])
 }
