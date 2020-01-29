@@ -146,11 +146,11 @@ pub struct BookBuy{
 /// Buy books
 #[post("/buy", format = "json", data = "<message>")]
 pub fn book_buy( conn:CodexPg, message:Json<BookBuy>) -> JsonValue {
-    use super::schema::books::dsl;
-    let book_no=&message.0.book_no;
+    use super::schema::books::dsl::*;
+    let book_num=&message.0.book_no;
     let out=jwt_handles::jwt_decoder(&message.0.token).unwrap();
 
-    //let results:Vec<BookFetch>=books.select((isbn_no,title,owner_reg_no)).load(&conn.0).unwrap();
+    let results:Vec<BookFetch>=books.select((isbn_no,title,owner_reg_no)).load(&conn.0).unwrap();
 
 
     json!({
