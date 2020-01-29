@@ -1,5 +1,4 @@
-
 [global]
-workers=2
-[global.databases.codex]
-url="mysql://codexman:codexman@db4free.net/codexman"
+workers=4
+[global.databases]
+codex_pg={url="postgres://ipdbjdbb:43GRubOC1h5L9jO7UaioKe6S3yjXl8u0@arjuna.db.elephantsql.com:5432/ipdbjdbb"}

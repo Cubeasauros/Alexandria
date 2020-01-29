@@ -1,19 +1,14 @@
 #![feature(proc_macro_hygiene, decl_macro)]
-
 #[macro_use] extern crate rocket;
 #[macro_use] extern crate rocket_contrib;
 #[macro_use] extern crate serde;
-extern crate base64;
-use Alexandria::json_handle;
-use Alexandria::CodexDb;
-use std::sync::Mutex;
-use std::collections::HashMap;
+#[macro_use] extern crate diesel;
+pub mod pg_database_handle;
+pub mod jwt_handles;
+use rocket_contrib::json::{JsonValue};
 
-use rocket::State;
-
-use rocket_contrib::json::{Json, JsonValue};
-
-
+#[database("codex_pg")]
+pub struct CodexPg(diesel::PgConnection);
 
 
 #[catch(404)]
@@ -25,21 +20,12 @@ fn not_found() -> JsonValue {
 }
 
 
-
-
-
-
 fn rocket() -> rocket::Rocket {
     rocket::ignite()
         .mount("/message", routes![
-        json_handle::new,
-        json_handle::register,
-        json_handle::list_all_books,
-        json_handle::new_book,
-        json_handle::delete_book,
-        json_handle::login,
-        json_handle::profile])
-        .attach(CodexDb::fairing())
+            pg_database_handle::handle::signup
+        ])
+        .attach(CodexPg::fairing())
         .register(catchers![not_found])
 }
 

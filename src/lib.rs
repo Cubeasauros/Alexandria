@@ -3,11 +3,20 @@
 #[macro_use] extern crate rocket;
 #[macro_use] extern crate rocket_contrib;
 #[macro_use] extern crate serde;
+#[macro_use] extern crate diesel;
+
 extern crate jsonwebtoken;
-pub mod json_handle;
-pub mod jwt_handles;
-pub mod database_handle;
-pub mod sq_lite_test;
+
 use rocket_contrib::databases::mysql;
+
+pub mod database_handle;
+
+
+/*
+//scheduled for deletion
 #[database("codex")]
 pub struct CodexDb(mysql::Conn);
+*/
+
+#[database("codex_pg")]
+pub struct CodexPg(diesel::PgConnection);
