@@ -24,7 +24,7 @@ pub fn jwt_encoder(reg_no:String)->String{
   token.unwrap()
 }
 
-pub fn jwt_decoder(token:String)->Option<LoginToken>{
-    let token_data=decode::<LoginToken>(&token,"secret".as_ref(),&Validation::default()).unwrap();
+pub fn jwt_decoder(token:&String)->Option<LoginToken>{
+    let token_data=decode::<LoginToken>(token,"secret".as_ref(),&Validation::default()).unwrap();
     Some(token_data.claims)
 }

@@ -29,7 +29,7 @@ pub fn signup( conn:CodexPg, message:Json<UserReg>) -> JsonValue {
 
 
 
-/*
+
 
 
 /// User Login
@@ -113,14 +113,14 @@ pub fn profile( conn:CodexPg, message:Json<Token>) -> JsonValue {
 
 
 
-/*
+
 
 /// Show after authtoken yet to be handled
 /// Show all books
 #[post("/book_list", format = "json", data = "<message>")]
 pub fn book_list( conn:CodexPg, message:Json<Token>) -> JsonValue {
     use super::schema::books::dsl::*;
-    let out=jwt_handles::jwt_decoder(message.0.token).unwrap();
+    let out=jwt_handles::jwt_decoder(&message.0.token).unwrap();
 
     let results:Vec<BookFetch>=books.select((isbn_no,title,owner_reg_no)).load(&conn.0).unwrap();
 
@@ -134,7 +134,7 @@ pub fn book_list( conn:CodexPg, message:Json<Token>) -> JsonValue {
 
 
 
-*/
+
 
 /// Buy book
 #[derive(Serialize,Deserialize)]
@@ -207,4 +207,3 @@ pub fn new_book( conn:CodexPg, message:Json<BookUpload>) -> JsonValue {
 
         })
 }
-*/

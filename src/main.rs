@@ -23,7 +23,12 @@ fn not_found() -> JsonValue {
 fn rocket() -> rocket::Rocket {
     rocket::ignite()
         .mount("/message", routes![
-            pg_database_handle::handle::signup
+            pg_database_handle::handle::signup,
+            pg_database_handle::handle::login,
+            pg_database_handle::handle::book_list,
+            pg_database_handle::handle::profile,
+            pg_database_handle::handle::new_book,
+            
         ])
         .attach(CodexPg::fairing())
         .register(catchers![not_found])
