@@ -44,3 +44,12 @@ pub struct BookFetch{
     owner_reg_no :String,
 
 }
+
+
+#[derive(Queryable,Serialize,Deserialize)]
+pub struct ProfBooks{
+    isbn_no:String,
+    image:String,
+    title:String,
+
+}

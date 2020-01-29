@@ -7,6 +7,11 @@ use diesel::prelude::*;
 use super::super::jwt_handles;
 
 
+
+
+
+
+
 /// New user Registration
 #[post("/signup", format = "json", data = "<message>")]
 pub fn signup( conn:CodexPg, message:Json<UserReg>) -> JsonValue {
@@ -20,7 +25,7 @@ pub fn signup( conn:CodexPg, message:Json<UserReg>) -> JsonValue {
     json!({
             "success": true,
             "message": "user created",
-            "id":message.0
+
         })
 }
 
@@ -57,8 +62,8 @@ pub fn login( conn:CodexPg, message:Json<Login>) -> JsonValue{
             if out.password==message.password{
             let token=jwt_handles::jwt_encoder(message.0.reg_no);
             json!({
-                "result":"ok",
-                "message":"User loggend in",
+                "success":true,
+                "message":"User logged in",
                 "token":token
                 })
 
@@ -87,6 +92,7 @@ pub fn login( conn:CodexPg, message:Json<Login>) -> JsonValue{
 
 /// Struct to contain auth_token
 /// Wrong authToken is yet to be handled
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Token {
     pub token:String
@@ -95,19 +101,24 @@ pub struct Token {
 #[post("/profile", format = "json", data = "<message>")]
 pub fn profile( conn:CodexPg, message:Json<Token>) -> JsonValue {
     use super::schema::users::dsl::*;
+    use super::schema::books::dsl::*;
     let out=jwt_handles::jwt_decoder(&message.0.token).unwrap();
-    let results:UserReg=users
+
+    let prof_books:Vec<ProfBooks> = books
+                            .select((isbn_no,image,title))
+                            .load(&conn.0).unwrap();
+
+    let results:UserReg = users
                 .filter(reg_no.eq(&out.reg_no))
                 .first(&conn.0).unwrap();
 
 
     json!({
-            "success": true,
-            "message": "user created",
             "name":results.name,
-            "reg_no":results.reg_no,
             "email":results.email,
-            "ph_no":results.ph_no
+            "reg_no":results.reg_no,
+            "room_no":results.room_no,
+            "books":prof_books
         })
 }
 
@@ -180,14 +191,14 @@ pub    token:String
 pub fn new_book( conn:CodexPg, message:Json<BookUpload>) -> JsonValue {
 
 
-
+    let out=jwt_handles::jwt_decoder(&message.0.token).unwrap();
 
         let upload_data= BookData{
             image :message.0.image,
             title :message.0.title,
             isbn_no :message.0.isbn_no,
             description :message.0.description,
-            owner_reg_no :"not_yet".to_string(),
+            owner_reg_no :out.reg_no,
             book_no :message.0.book_no,
             price :message.0.price,
 

@@ -28,7 +28,7 @@ fn rocket() -> rocket::Rocket {
             pg_database_handle::handle::book_list,
             pg_database_handle::handle::profile,
             pg_database_handle::handle::new_book,
-            
+
         ])
         .attach(CodexPg::fairing())
         .register(catchers![not_found])
