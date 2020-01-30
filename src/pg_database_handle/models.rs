@@ -42,6 +42,7 @@ pub struct BookFetch{
     title :String,
     isbn_no :String,
     owner_reg_no :String,
+    book_no:i32,
 
 }
 

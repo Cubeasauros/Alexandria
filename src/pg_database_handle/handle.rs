@@ -1,3 +1,4 @@
+use diesel::dsl::max;
 use super::super::diesel;
 use super::models::*;
 use super::schema::*;
@@ -105,7 +106,7 @@ pub fn profile( conn:CodexPg, message:Json<Token>) -> JsonValue {
     use super::schema::books::dsl::*;
     let out=jwt_handles::jwt_decoder(&message.0.token).unwrap();
 
-    let prof_books:Vec<ProfBooks> = books
+    let prof_books:Vec<ProfBooks> = books.filter(owner_reg_no.eq(&out.reg_no))
                             .select((isbn_no,image,title))
                             .load(&conn.0).unwrap();
 
@@ -132,7 +133,7 @@ pub fn book_list( conn:CodexPg, message:Json<Token>) -> JsonValue {
     use super::schema::books::dsl::*;
     let out=jwt_handles::jwt_decoder(&message.0.token).unwrap();
 
-    let results:Vec<BookFetch>=books.filter(owner_reg_no.eq(out.reg_no)).select((isbn_no,title,owner_reg_no)).load(&conn.0).unwrap();
+    let results:Vec<BookFetch>=books.select((isbn_no,title,owner_reg_no,book_no)).load(&conn.0).unwrap();
 
 
     json!({
@@ -141,6 +142,38 @@ pub fn book_list( conn:CodexPg, message:Json<Token>) -> JsonValue {
             "data":results
         })
 }
+
+
+
+
+/// Shows isbn profile
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IsbnToken {
+    pub token:String,
+    pub isbn_no:String
+}
+/// isbn profile
+#[post("/isbn_profile", format = "json", data = "<message>")]
+pub fn isbn_profile( conn:CodexPg, message:Json<IsbnToken>) -> JsonValue {
+    use super::schema::books::dsl::*;
+    let out=jwt_handles::jwt_decoder(&message.0.token).unwrap();
+
+    let results:Vec<BookFetch>=books.filter(isbn_no.eq(message.0.isbn_no)).select((isbn_no,title,owner_reg_no,book_no)).load(&conn.0).unwrap();
+    json!({
+            "success": true,
+            "message": "booklist",
+            "data":results
+        })
+}
+
+
+
+
+
+
+
+
+
 
 
 
@@ -167,8 +200,9 @@ pub fn book_buy(conn:CodexPg, message:Json<BookBuy>) -> JsonValue {
 
     let results:BookFetch = books
                 .filter(book_no.eq(&message.0.book_no))
-                .select((isbn_no,title,owner_reg_no))
+                .select((isbn_no,title,owner_reg_no,book_no))
                 .first(&conn.0).unwrap();
+
 
 
     json!({
@@ -178,14 +212,16 @@ pub fn book_buy(conn:CodexPg, message:Json<BookBuy>) -> JsonValue {
 }
 
 
-/// New book Registration
+
+
+
+/// New book Upload
 #[derive(Serialize,Deserialize)]
 pub struct BookUpload{
 pub    image :String,
 pub    title :String,
 pub    isbn_no :String,
 pub    description :String,
-pub    book_no :i32,
 pub    price :i32,
 pub    token:String
 }
@@ -195,6 +231,10 @@ pub    token:String
 pub fn new_book( conn:CodexPg, message:Json<BookUpload>) -> JsonValue {
 
     let out = jwt_handles::jwt_decoder(&message.0.token).unwrap();
+    use super::schema::books::dsl::*;
+    use super::schema::books;
+
+    let get_book_num:i32=books.select(max(book_no)).execute(&conn.0).unwrap() as i32;
 
         let upload_data = BookData{
             image :message.0.image,
@@ -202,13 +242,15 @@ pub fn new_book( conn:CodexPg, message:Json<BookUpload>) -> JsonValue {
             isbn_no :message.0.isbn_no,
             description :message.0.description,
             owner_reg_no :out.reg_no,
-            book_no :message.0.book_no,
+            book_no :get_book_num +1,
             price :message.0.price,
 
         };
 
 
-        use super::schema::books;
+
+
+
         diesel::insert_into(books::table)
         .values(&upload_data)
         .execute(&conn.0).
@@ -224,19 +266,48 @@ pub fn new_book( conn:CodexPg, message:Json<BookUpload>) -> JsonValue {
 
 
 
+
+
+
+
+/// Deletes a book
+/// user has to be logged in first
 #[derive(Serialize, Deserialize)]
 pub struct  BookDelete {
     pub token : String,
     pub book_no : i32
 }
 
-/*
 
 #[post("/delete_book", format = "json", data = "<message>")]
 pub fn delete_book(conn:CodexPg, message:Json<BookDelete>) -> JsonValue{
+    use super::schema::books::dsl::*;
 
-    let out = jwt_handles::jwt_decoder(&message.0.token).unwrap();
+    let out = jwt_handles::jwt_decoder(&message.0.token);
+    match out {
+        Some(value)=>{
+            //check if owner here
+            diesel::delete(books.filter(book_no.eq(message.0.book_no))).execute(&conn.0).unwrap();
+            json!({
+                "success":true,
+                "message":"book deleted"
+            })
+        }
+        None=>{
+            json!({
+                "success":false,
+                "message":"Invalid login details"
+            })
 
-
+        }
+    }
 }
-*/
+
+
+
+
+pub fn delete_book_general(conn:CodexPg,del_book_no:i32){
+    use super::schema::books::dsl::*;
+    use super::schema::books;
+    diesel::delete(books.filter(book_no.eq(del_book_no))).execute(&conn.0).unwrap();
+}
