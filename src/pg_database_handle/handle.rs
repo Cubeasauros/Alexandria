@@ -97,6 +97,7 @@ pub fn login( conn:CodexPg, message:Json<Login>) -> JsonValue{
 pub struct Token {
     pub token:String
 }
+
 /// Show Profile
 #[post("/profile", format = "json", data = "<message>")]
 pub fn profile( conn:CodexPg, message:Json<Token>) -> JsonValue {
@@ -124,8 +125,6 @@ pub fn profile( conn:CodexPg, message:Json<Token>) -> JsonValue {
 
 
 
-
-
 /// Show after authtoken yet to be handled
 /// Show all books
 #[post("/book_list", format = "json", data = "<message>")]
@@ -133,7 +132,7 @@ pub fn book_list( conn:CodexPg, message:Json<Token>) -> JsonValue {
     use super::schema::books::dsl::*;
     let out=jwt_handles::jwt_decoder(&message.0.token).unwrap();
 
-    let results:Vec<BookFetch>=books.select((isbn_no,title,owner_reg_no)).load(&conn.0).unwrap();
+    let results:Vec<BookFetch>=books.filter(owner_reg_no.eq(out.reg_no)).select((isbn_no,title,owner_reg_no)).load(&conn.0).unwrap();
 
 
     json!({
@@ -156,22 +155,27 @@ pub struct BookBuy{
 /// Show after authtoken yet to be handled
 /// Buy books
 #[post("/buy", format = "json", data = "<message>")]
-pub fn book_buy( conn:CodexPg, message:Json<BookBuy>) -> JsonValue {
+pub fn book_buy(conn:CodexPg, message:Json<BookBuy>) -> JsonValue {
     use super::schema::books::dsl::*;
-    let book_num=&message.0.book_no;
-    let out=jwt_handles::jwt_decoder(&message.0.token).unwrap();
 
-    let results:Vec<BookFetch>=books.select((isbn_no,title,owner_reg_no)).load(&conn.0).unwrap();
+    let out = jwt_handles::jwt_decoder(&message.0.token).unwrap();
+
+    //Check with auth if user is in the database
+    // create table to store books bought
+    // reauthenticate
+    // delete book from db
+
+    let results:BookFetch = books
+                .filter(book_no.eq(&message.0.book_no))
+                .select((isbn_no,title,owner_reg_no))
+                .first(&conn.0).unwrap();
 
 
     json!({
             "success": true,
-            "message": "booklist"
+            "message": results
         })
 }
-
-
-
 
 
 /// New book Registration
@@ -190,10 +194,9 @@ pub    token:String
 #[post("/new_book", format = "json", data = "<message>")]
 pub fn new_book( conn:CodexPg, message:Json<BookUpload>) -> JsonValue {
 
+    let out = jwt_handles::jwt_decoder(&message.0.token).unwrap();
 
-    let out=jwt_handles::jwt_decoder(&message.0.token).unwrap();
-
-        let upload_data= BookData{
+        let upload_data = BookData{
             image :message.0.image,
             title :message.0.title,
             isbn_no :message.0.isbn_no,
@@ -203,7 +206,6 @@ pub fn new_book( conn:CodexPg, message:Json<BookUpload>) -> JsonValue {
             price :message.0.price,
 
         };
-
 
 
         use super::schema::books;
@@ -218,3 +220,23 @@ pub fn new_book( conn:CodexPg, message:Json<BookUpload>) -> JsonValue {
 
         })
 }
+
+
+
+
+#[derive(Serialize, Deserialize)]
+pub struct  BookDelete {
+    pub token : String,
+    pub book_no : i32
+}
+
+/*
+
+#[post("/delete_book", format = "json", data = "<message>")]
+pub fn delete_book(conn:CodexPg, message:Json<BookDelete>) -> JsonValue{
+
+    let out = jwt_handles::jwt_decoder(&message.0.token).unwrap();
+
+
+}
+*/
