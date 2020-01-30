@@ -6,4 +6,14 @@ CREATE TABLE users (
   ph_no TEXT,
   password TEXT,
   room_no TEXT
-)
+);
+
+CREATE TABLE books(
+  image TEXT,
+  title TEXT,
+  isbn_no TEXT,
+  description TEXT,
+  owner_reg_no TEXT,
+  book_no INTEGER PRIMARY KEY ,
+  price INTEGER,
+);
