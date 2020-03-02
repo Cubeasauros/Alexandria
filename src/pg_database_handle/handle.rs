@@ -237,26 +237,23 @@ pub    token:String
 #[post("/new_book", format = "json", data = "<message>")]
 pub fn new_book( conn:CodexPg, message:Json<BookUpload>) -> JsonValue {
 
-    let out = jwt_handles::jwt_decoder(&message.0.token).unwrap();
+    let out :Option<jwt_handles::LoginToken>= jwt_handles::jwt_decoder(&message.0.token);
     use super::schema::books::dsl::*;
     use super::schema::books;
 
     let get_book_num:i32=books.select(max(book_no)).execute(&conn.0).unwrap() as i32;
 
+    if let Some(out_val)=out{
         let upload_data = BookData{
             image :message.0.image,
             title :message.0.title,
             isbn_no :message.0.isbn_no,
             description :message.0.description,
-            owner_reg_no :out.reg_no,
+            owner_reg_no :out_val.reg_no,
             book_no :get_book_num +1,
             price :message.0.price,
 
         };
-
-
-
-
 
         diesel::insert_into(books::table)
         .values(&upload_data)
@@ -268,6 +265,16 @@ pub fn new_book( conn:CodexPg, message:Json<BookUpload>) -> JsonValue {
             "message": "book uploaded"
 
         })
+    }
+    else{
+        json!({
+                "success": false,
+                "message": "invalid login"
+
+            })
+
+    }
+
 }
 
 
