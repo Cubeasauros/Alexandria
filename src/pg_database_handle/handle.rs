@@ -82,7 +82,6 @@ pub fn login( conn:CodexPg, message:Json<Login>) -> JsonValue{
             json!({
                 "result":"failed",
                 "message":"invalid Reg_no"
-
                 })
             }
         }
@@ -110,18 +109,26 @@ pub fn profile( conn:CodexPg, message:Json<Token>) -> JsonValue {
                             .select((isbn_no,image,title))
                             .load(&conn.0).unwrap();
 
-    let results:UserReg = users
+    let result:Result<UserReg,diesel::result::Error> = users
                 .filter(reg_no.eq(&out.reg_no))
-                .first(&conn.0).unwrap();
+                .first(&conn.0);
 
-
-    json!({
+if let Ok(results)=result
+    {
+        json!({
             "name":results.name,
             "email":results.email,
             "reg_no":results.reg_no,
             "room_no":results.room_no,
             "books":prof_books
         })
+
+    }
+    else{
+        json!({
+            "message":"bad request"
+        })
+    }
 }
 
 
@@ -203,7 +210,7 @@ pub fn book_buy(conn:CodexPg, message:Json<BookBuy>) -> JsonValue {
                 .select((isbn_no,title,owner_reg_no,book_no))
                 .first(&conn.0).unwrap();
 
-
+        diesel::delete(books.filter(book_no.eq(message.0.book_no))).execute(&conn.0).unwrap();
 
     json!({
             "success": true,
