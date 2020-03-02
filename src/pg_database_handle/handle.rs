@@ -18,16 +18,24 @@ use super::super::jwt_handles;
 pub fn signup( conn:CodexPg, message:Json<UserReg>) -> JsonValue {
 
         use super::schema::users;
-        diesel::insert_into(users::table)
+        let result=diesel::insert_into(users::table)
         .values(&message.0)
-        .execute(&conn.0).
-        unwrap();
+        .execute(&conn.0);
 
+    if let Ok(val)=result{
     json!({
             "success": true,
             "message": "user created",
 
         })
+    }
+    else{
+        json!({
+                "success": false,
+                "message": "user not created",
+
+            })
+    }
 }
 
 
@@ -70,8 +78,9 @@ pub fn login( conn:CodexPg, message:Json<Login>) -> JsonValue{
 
             }else{
                 json!({
-                    "result":"failed",
-                    "message":"invalid Credentials"
+                    "success":false,
+                    "message":"invalid Credentials",
+                    "token":""
 
                 })
             }
@@ -80,8 +89,10 @@ pub fn login( conn:CodexPg, message:Json<Login>) -> JsonValue{
         Err(out)=>{
 
             json!({
-                "result":"failed",
-                "message":"invalid Reg_no"
+                "success":false,
+                "message":"invalid Credentials",
+                "token":""
+
                 })
             }
         }
@@ -116,6 +127,7 @@ pub fn profile( conn:CodexPg, message:Json<Token>) -> JsonValue {
 if let Ok(results)=result
     {
         json!({
+            "success":true,
             "name":results.name,
             "email":results.email,
             "reg_no":results.reg_no,
@@ -126,7 +138,13 @@ if let Ok(results)=result
     }
     else{
         json!({
-            "message":"bad request"
+            "success":false,
+            "name":"",
+            "email":"",
+            "reg_no":"",
+            "room_no":"",
+            "books":""
+
         })
     }
 }
@@ -138,8 +156,9 @@ if let Ok(results)=result
 #[post("/book_list", format = "json", data = "<message>")]
 pub fn book_list( conn:CodexPg, message:Json<Token>) -> JsonValue {
     use super::schema::books::dsl::*;
-    let out=jwt_handles::jwt_decoder(&message.0.token).unwrap();
+    let out:Option<jwt_handles::LoginToken>=jwt_handles::jwt_decoder(&message.0.token);
 
+    if let Some(val)=out{
     let results:Vec<BookFetch>=books.select((isbn_no,title,owner_reg_no,book_no)).load(&conn.0).unwrap();
 
 
@@ -148,7 +167,17 @@ pub fn book_list( conn:CodexPg, message:Json<Token>) -> JsonValue {
             "message": "booklist",
             "data":results
         })
+    }
+    else{
+        json!({
+                "success": false,
+                "message": "booklist",
+                "data":""
+            })
+
+    }
 }
+
 
 
 
@@ -163,27 +192,27 @@ pub struct IsbnToken {
 #[post("/isbn_profile", format = "json", data = "<message>")]
 pub fn isbn_profile( conn:CodexPg, message:Json<IsbnToken>) -> JsonValue {
     use super::schema::books::dsl::*;
-    let out=jwt_handles::jwt_decoder(&message.0.token).unwrap();
+    let out:Option<jwt_handles::LoginToken>=jwt_handles::jwt_decoder(&message.0.token);
 
-    let results:Vec<BookFetch>=books.filter(isbn_no.eq(message.0.isbn_no)).select((isbn_no,title,owner_reg_no,book_no)).load(&conn.0).unwrap();
-    json!({
+    if let  Some(val)=out{
+    let results:Vec<BookFetch>=books
+                                .filter(isbn_no.eq(message.0.isbn_no))
+                                .select((isbn_no,title,owner_reg_no,book_no))
+                                .load(&conn.0).unwrap();
+        json!({
             "success": true,
             "message": "booklist",
             "data":results
         })
+    }
+    else{
+        json!({
+            "success":false,
+            "message":"unauthorised login",
+            "data":""
+        })
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 /// Buy book
@@ -198,13 +227,15 @@ pub struct BookBuy{
 pub fn book_buy(conn:CodexPg, message:Json<BookBuy>) -> JsonValue {
     use super::schema::books::dsl::*;
 
-    let out = jwt_handles::jwt_decoder(&message.0.token).unwrap();
+    let out:Option<jwt_handles::LoginToken> = jwt_handles::jwt_decoder(&message.0.token);
 
     //Check with auth if user is in the database
     // create table to store books bought
     // reauthenticate
     // delete book from db
 
+
+    if let Some(val)=out{
     let results:BookFetch = books
                 .filter(book_no.eq(&message.0.book_no))
                 .select((isbn_no,title,owner_reg_no,book_no))
@@ -213,9 +244,19 @@ pub fn book_buy(conn:CodexPg, message:Json<BookBuy>) -> JsonValue {
         diesel::delete(books.filter(book_no.eq(message.0.book_no))).execute(&conn.0).unwrap();
 
     json!({
-            "success": true,
-            "message": results
+                "success": true,
+                "message": results
         })
+    }
+
+    else{
+
+        json!({
+                "success": false,
+                "message":""
+            })
+
+    }
 }
 
 
@@ -238,12 +279,14 @@ pub    token:String
 pub fn new_book( conn:CodexPg, message:Json<BookUpload>) -> JsonValue {
 
     let out :Option<jwt_handles::LoginToken>= jwt_handles::jwt_decoder(&message.0.token);
+
+    if let Some(out_val) = out{
+
     use super::schema::books::dsl::*;
     use super::schema::books;
 
     let get_book_num:i32=books.select(max(book_no)).execute(&conn.0).unwrap() as i32;
 
-    if let Some(out_val)=out{
         let upload_data = BookData{
             image :message.0.image,
             title :message.0.title,
@@ -255,11 +298,11 @@ pub fn new_book( conn:CodexPg, message:Json<BookUpload>) -> JsonValue {
 
         };
 
-        diesel::insert_into(books::table)
+        let result=diesel::insert_into(books::table)
         .values(&upload_data)
-        .execute(&conn.0).
-        unwrap();
+        .execute(&conn.0);
 
+if let Ok(val) = result{
     json!({
             "success": true,
             "message": "book uploaded"
@@ -269,11 +312,23 @@ pub fn new_book( conn:CodexPg, message:Json<BookUpload>) -> JsonValue {
     else{
         json!({
                 "success": false,
-                "message": "invalid login"
+                "message": "internal server error"
 
             })
+        }
+    }
+
+else{
+
+
+    json!({
+            "success": false,
+            "message": "invalid login"
+
+        })
 
     }
+
 
 }
 
